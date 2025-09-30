@@ -4,7 +4,9 @@
 
 package frc.robot.subsystems;
 
-import edu.wpi.first.wpilibj.DigitalInput;
+import java.util.ArrayList;
+import java.util.List;
+
 import edu.wpi.first.wpilibj.Servo;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -12,41 +14,106 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class BrakeSubsystem extends SubsystemBase {
-  private final Servo brakeServo;
-  private boolean isEngaged = true;
+  private static class Brake {
+    private Servo servo;
+    private double disengaged;
+    private double engaged;
+    private boolean isEngaged = false;
 
-  /** Creates a new ExampleSubsystem. */
-  public BrakeSubsystem(int servoPort) {
-    brakeServo = new Servo(0);
+    Brake (int port, double disengaged, double engaged) {
+      this.servo = new Servo(port);
+      this.disengaged = disengaged;
+      this.engaged = engaged;
+    }
   }
 
-  public boolean isBrakeEngaged() {
-    return isEngaged;
+  private final List<Brake> brakes = new ArrayList<>();
+
+/**
+   * Constructor to support multiple brakes.
+   * @param configs
+   */
+  public BrakeSubsystem(double... configs) {
+    if (configs.length % 3 != 0) {
+      throw new IllegalArgumentException("Configs must be in groups of 3: port, disengagedAngle, engagedAngle");
+    }
+    for (int i = 0; i < configs.length; i += 3) {
+      int port = (int) configs[i];
+      double disengagedAngle = configs[i + 1];
+      double engagedAngle = configs[i + 2];
+      brakes.add(new Brake(port, disengagedAngle, engagedAngle));
+    }
   }
 
-  private void disengageBrake() {
-    brakeServo.set(0.2);
-    isEngaged = false;
+/**
+   * Returns true if the specified brake is engaged (on).
+   * @param index
+   */
+  public boolean isBrakeEngaged(int index) {
+    return brakes.get(index).isEngaged;
   }
 
-  private void engageBrake() {
-    brakeServo.set(0);
-    isEngaged = true;
+  private void disengageBrake(int index) {
+    Brake brake = brakes.get(index);
+    brake.servo.setAngle(brake.disengaged);
+    brake.isEngaged = false;
   }
 
-  public Command disengageCommand() {
-    return Commands.runOnce(this::disengageBrake, this)
-      .andThen(Commands.waitSeconds(0.5));
+  private void engageBrake(int index) {
+    Brake brake = brakes.get(index);
+    brake.servo.setAngle(brake.engaged);
+    brake.isEngaged = true;
   }
 
-  public Command engageCommand() {
-    return Commands.runOnce(this::engageBrake, this)
-      .andThen(Commands.waitSeconds(0.5));
+/**
+   * Command to disengage the specified brake (off).
+   * @param index
+   */
+  public Command disengageCommand(int index) {
+    return Commands.runOnce(() -> disengageBrake(index), this)
+        .andThen(Commands.waitSeconds(0.5));
+  }
+
+  /**
+   * Command to engage the specified brake (on).
+   * @param index
+   */
+  public Command engageCommand(int index) {
+    return Commands.runOnce(() -> engageBrake(index), this)
+        .andThen(Commands.waitSeconds(0.5));
+  }
+
+  /**
+   * Command to disengage all brakes.
+   */
+  public Command disengageAllCommand() {
+    return Commands.parallel(brakes.stream()
+        .map(b -> disengageCommand(brakes.indexOf(b)))
+        .toArray(Command[]::new));
+  }
+
+  /**
+   * Command to engage all brakes.
+   */
+  public Command engageAllCommand() {
+    return Commands.parallel(brakes.stream()
+        .map(b -> engageCommand(brakes.indexOf(b)))
+        .toArray(Command[]::new));
+  }
+
+  /**
+   * Returns true if all brakes are engaged.
+   */
+  public boolean areAllBrakesEngaged() {
+    return brakes.stream().allMatch(b -> b.isEngaged);
   }
 
   @Override
   public void periodic() {
-    // This method will be called once per scheduler run
-    SmartDashboard.putBoolean("Brake Engaged", isBrakeEngaged());
+    for (int i = 0; i < brakes.size(); i++) {
+      Brake brake = brakes.get(i);
+      SmartDashboard.putBoolean("Brake " + i + " Engaged", brake.isEngaged);
+      SmartDashboard.putNumber("Brake " + i + " Angle (degrees)", brake.servo.getAngle());
+    }
   }
 }
