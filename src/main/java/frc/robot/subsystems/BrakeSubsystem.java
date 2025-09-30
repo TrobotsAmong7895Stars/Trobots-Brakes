@@ -65,6 +65,20 @@ public class BrakeSubsystem extends SubsystemBase {
     brake.isEngaged = true;
   }
 
+  private void disengageAll() {
+    for (Brake brake : brakes) {
+      brake.servo.setAngle(brake.disengaged);
+      brake.isEngaged = false;
+    }
+  }
+
+  private void engageAll() {
+    for (Brake brake : brakes) {
+      brake.servo.setAngle(brake.engaged);
+      brake.isEngaged = true;
+    }
+  }
+
 /**
    * Command to disengage the specified brake (off).
    * @param index
@@ -83,22 +97,20 @@ public class BrakeSubsystem extends SubsystemBase {
         .andThen(Commands.waitSeconds(0.5));
   }
 
-  /**
+/**
    * Command to disengage all brakes.
    */
   public Command disengageAllCommand() {
-    return Commands.parallel(brakes.stream()
-        .map(b -> disengageCommand(brakes.indexOf(b)))
-        .toArray(Command[]::new));
+    return Commands.runOnce(this::disengageAll, this)
+        .andThen(Commands.waitSeconds(0.5));
   }
 
   /**
    * Command to engage all brakes.
    */
   public Command engageAllCommand() {
-    return Commands.parallel(brakes.stream()
-        .map(b -> engageCommand(brakes.indexOf(b)))
-        .toArray(Command[]::new));
+    return Commands.runOnce(this::engageAll, this)
+        .andThen(Commands.waitSeconds(0.5));
   }
 
   /**

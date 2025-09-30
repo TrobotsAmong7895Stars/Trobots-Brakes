@@ -21,9 +21,9 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 public class RobotContainer {
   // The robot's subsystems and commands are defined here...
   private final BrakeSubsystem brakeSubsystem = new BrakeSubsystem(
-    0, 35.0, 0.0,
-    1, 35.0, 0.0,
-    2, 130.0, 160.0
+    0, 0.0, 35.0,
+    1, 0.0, 35.0,
+    2, 160.0, 130.0
   );
 
   // Replace with CommandPS4Controller or CommandJoystick if needed
@@ -52,6 +52,9 @@ public class RobotContainer {
     m_driverController.y().onTrue(brakeSubsystem.disengageCommand(1));
     m_driverController.leftBumper().onTrue(brakeSubsystem.engageCommand(2));
     m_driverController.rightBumper().onTrue(brakeSubsystem.disengageCommand(2));
+
+    m_driverController.start().onTrue(brakeSubsystem.engageAllCommand());
+    m_driverController.back().onTrue(brakeSubsystem.disengageAllCommand());
   }
 
   /**
